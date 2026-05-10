@@ -29,7 +29,11 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: pricetag
       DEBUG: "false"
-      USE_ML: "false"
+      USE_ML: "true"
+      OCR_ENGINE: "tesseract"
+      OCR_LANG: "ru"
+      TESSERACT_LANG: "rus+eng"
+      CENTER_CROP_RATIO: "0.72"
     depends_on:
       db:
         condition: service_healthy

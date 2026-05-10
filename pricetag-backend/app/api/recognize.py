@@ -23,44 +23,35 @@ ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
     summary="Распознать цену на изображении",
 )
 async def recognize_price(
-    file: UploadFile = File(..., description="Изображение ценника (JPEG/PNG)"),
+    file: UploadFile = File(..., description="Изображение ценника (JPEG/PNG/WEBP)"),
     db: AsyncSession = Depends(get_db),
 ):
-    # Валидация типа файла
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Неподдерживаемый тип файла: {file.content_type}. "
-                   f"Разрешены: {', '.join(ALLOWED_CONTENT_TYPES)}",
+            detail=(
+                f"Неподдерживаемый тип файла: {file.content_type}. "
+                f"Разрешены: {', '.join(sorted(ALLOWED_CONTENT_TYPES))}"
+            ),
         )
 
-    # Читаем содержимое
     contents = await file.read()
 
-    # Проверка размера
     if len(contents) > settings.MAX_IMAGE_SIZE_BYTES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Файл слишком большой. Максимум: {settings.MAX_IMAGE_SIZE_MB} МБ",
         )
 
-    # Запускаем ML-пайплайн
     try:
         ml_result = await ocr_processor.process(contents)
-    except Exception as e:
-        logger.exception("Ошибка ML-пайплайна")
+    except Exception:
+        logger.exception("Ошибка OCR-пайплайна")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Ошибка обработки изображения",
         )
 
-    if ml_result.price is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No price detected",
-        )
-
-    # Сохраняем в БД
     recognition = await crud.create_recognition(
         db=db,
         image_data=contents,
@@ -71,10 +62,17 @@ async def recognize_price(
 
     return RecognizeResponse(
         request_id=recognition.id,
-        price=float(recognition.extracted_price) if recognition.extracted_price else None,
+        price=float(recognition.extracted_price)
+        if recognition.extracted_price is not None
+        else None,
         raw_text=recognition.raw_text,
-        confidence=float(recognition.confidence) if recognition.confidence else None,
+        confidence=float(recognition.confidence)
+        if recognition.confidence is not None
+        else None,
         timestamp=recognition.created_at.replace(tzinfo=timezone.utc)
         if recognition.created_at.tzinfo is None
         else recognition.created_at,
+        detected=ml_result.price is not None,
+        engine=ml_result.engine,
+        message=ml_result.message,
     )

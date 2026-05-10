@@ -1,0 +1,12 @@
+pricetag-frontend/node_modules/
+pricetag-frontend/dist/
+pricetag-frontend/*.tsbuildinfo
+pricetag-backend/.ocr-cache/
+pricetag-backend/app/debug_*
+pricetag-backend/__pycache__/
+pricetag-backend/app/**/__pycache__/
+ml_model/**/__pycache__/
+*.pyc
+.env
+pricetag-frontend/.env
+pricetag-backend/.env

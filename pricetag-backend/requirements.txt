@@ -6,8 +6,8 @@ pydantic==2.10.3
 pydantic-settings==2.6.1
 python-multipart==0.0.18
 
-# ML (раскомментировать когда ML-разработчик подключит модели)
-# opencv-python==4.10.0.84
-# paddleocr==2.9.1
-# ultralytics==8.3.46
-# numpy==1.26.4
+numpy>=1.26,<3
+opencv-python-headless>=4.10,<5
+pytesseract>=0.3.10,<1
+paddlepaddle>=3.0,<4
+paddleocr>=3.0,<4
