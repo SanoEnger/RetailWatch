@@ -151,6 +151,30 @@ export function RecognitionModal({
                     {getStatusLabel(activeItem.is_valid)}
                   </strong>
                 </div>
+                {activeItem.product_name && (
+                  <div>
+                    <span>Название</span>
+                    <strong>{activeItem.product_name}</strong>
+                  </div>
+                )}
+                {activeItem.barcode && (
+                  <div>
+                    <span>Штрихкод</span>
+                    <strong>{activeItem.barcode}</strong>
+                  </div>
+                )}
+                {activeItem.weight && (
+                  <div>
+                    <span>Вес/Объем</span>
+                    <strong>{activeItem.weight}</strong>
+                  </div>
+                )}
+                {activeItem.store && (
+                  <div>
+                    <span>Магазин</span>
+                    <strong>{activeItem.store}</strong>
+                  </div>
+                )}
               </div>
 
               <div className="result-card__text">

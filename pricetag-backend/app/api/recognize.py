@@ -58,6 +58,10 @@ async def recognize_price(
         raw_text=ml_result.raw_text,
         extracted_price=ml_result.price,
         confidence=ml_result.confidence,
+        product_name=ml_result.product_name,
+        barcode=ml_result.barcode,
+        weight=ml_result.weight,
+        store=ml_result.store,
     )
 
     return RecognizeResponse(
@@ -75,4 +79,8 @@ async def recognize_price(
         detected=ml_result.price is not None,
         engine=ml_result.engine,
         message=ml_result.message,
+        product_name=recognition.product_name,
+        barcode=recognition.barcode,
+        weight=recognition.weight,
+        store=recognition.store,
     )

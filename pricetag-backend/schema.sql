@@ -11,6 +11,12 @@ CREATE TABLE IF NOT EXISTS recognitions (
     confidence      NUMERIC(4, 3),
     is_valid        BOOLEAN         DEFAULT NULL,  -- NULL = не проверено
     correct_price   NUMERIC(10, 2),               -- заполняется оператором
+    
+    product_name    TEXT,                         -- название товара
+    barcode         TEXT,                         -- штрихкод
+    weight          TEXT,                         -- вес/объем
+    store           TEXT,                         -- магазин
+    
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
@@ -21,3 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_recognitions_created_at ON recognitions (created_
 COMMENT ON TABLE recognitions IS 'Результаты распознавания ценников';
 COMMENT ON COLUMN recognitions.is_valid IS 'NULL — не проверено, TRUE — верно, FALSE — ошибка';
 COMMENT ON COLUMN recognitions.image_data IS 'BLOB картинки. MVP: хранится в Postgres. В продакшне перенести в MinIO/S3';
+COMMENT ON COLUMN recognitions.product_name IS 'Название товара, извлеченное из ценника';
+COMMENT ON COLUMN recognitions.barcode IS 'Штрихкод товара';
+COMMENT ON COLUMN recognitions.weight IS 'Вес или объем товара (например, 500г, 1л)';
+COMMENT ON COLUMN recognitions.store IS 'Название магазина или торговой сети';

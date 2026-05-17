@@ -180,6 +180,30 @@ export function UploadPanel({ onRecognized }: UploadPanelProps) {
                 <span>Проверка</span>
                 <strong>{result?.detected ? "найдена цена" : "нет цены"}</strong>
               </div>
+              {result?.product_name && (
+                <div>
+                  <span>Название</span>
+                  <strong>{result.product_name}</strong>
+                </div>
+              )}
+              {result?.barcode && (
+                <div>
+                  <span>Штрихкод</span>
+                  <strong>{result.barcode}</strong>
+                </div>
+              )}
+              {result?.weight && (
+                <div>
+                  <span>Вес/Объем</span>
+                  <strong>{result.weight}</strong>
+                </div>
+              )}
+              {result?.store && (
+                <div>
+                  <span>Магазин</span>
+                  <strong>{result.store}</strong>
+                </div>
+              )}
             </div>
 
             <div className="result-card__text">

@@ -14,6 +14,11 @@ class RecognizeResponse(BaseModel):
     detected: bool = True
     engine: Optional[str] = None
     message: Optional[str] = None
+    
+    product_name: Optional[str] = None
+    barcode: Optional[str] = None
+    weight: Optional[str] = None
+    store: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -35,6 +40,11 @@ class HistoryItem(BaseModel):
     confidence: Optional[float]
     is_valid: Optional[bool]
     created_at: datetime
+    
+    product_name: Optional[str] = None
+    barcode: Optional[str] = None
+    weight: Optional[str] = None
+    store: Optional[str] = None
 
     @property
     def status(self) -> str:

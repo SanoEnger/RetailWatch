@@ -13,12 +13,20 @@ async def create_recognition(
     raw_text: Optional[str],
     extracted_price: Optional[float],
     confidence: Optional[float],
+    product_name: Optional[str] = None,
+    barcode: Optional[str] = None,
+    weight: Optional[str] = None,
+    store: Optional[str] = None,
 ) -> Recognition:
     obj = Recognition(
         image_data=image_data,
         raw_text=raw_text,
         extracted_price=extracted_price,
         confidence=confidence,
+        product_name=product_name,
+        barcode=barcode,
+        weight=weight,
+        store=store,
     )
     db.add(obj)
     await db.commit()

@@ -1,4 +1,5 @@
 import { formatConfidence, formatCurrency, formatDate, getStatusLabel, getStatusTone } from "../lib/format";
+import { exportCSV } from "../lib/api";
 import type { HistoryItem } from "../types/api";
 
 interface HistoryTableProps {
@@ -18,6 +19,14 @@ export function HistoryTable({
   total,
   onOpen,
 }: HistoryTableProps) {
+  async function handleExport() {
+    try {
+      await exportCSV();
+    } catch (err) {
+      console.error("Ошибка экспорта:", err);
+    }
+  }
+
   return (
     <section className="panel">
       <div className="panel__header">
@@ -25,7 +34,17 @@ export function HistoryTable({
           <p className="panel__eyebrow">History</p>
           <h2>Последние распознавания</h2>
         </div>
-        <span className="panel__tag">{total} записей</span>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <span className="panel__tag">{total} записей</span>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => void handleExport()}
+            disabled={total === 0}
+          >
+            Экспорт CSV
+          </button>
+        </div>
       </div>
 
       {error && <p className="panel__error">{error}</p>}

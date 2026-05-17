@@ -9,6 +9,11 @@ export interface RecognizeResponse {
   detected: boolean;
   engine: string | null;
   message: string | null;
+  
+  product_name: string | null;
+  barcode: string | null;
+  weight: string | null;
+  store: string | null;
 }
 
 export interface HistoryItem {
@@ -18,6 +23,11 @@ export interface HistoryItem {
   confidence: number | null;
   is_valid: boolean | null;
   created_at: string;
+  
+  product_name: string | null;
+  barcode: string | null;
+  weight: string | null;
+  store: string | null;
 }
 
 export interface HistoryResponse {

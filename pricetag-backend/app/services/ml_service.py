@@ -42,6 +42,19 @@ PRODUCT_UNIT_PATTERN = re.compile(
 )
 DATE_PATTERN = re.compile(r"\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b")
 
+BARCODE_PATTERN = re.compile(r"\b(\d{8,13})\b")
+WEIGHT_PATTERN = re.compile(
+    r"(\d+\.?\d*)\s*(г|гр|кг|мл|л|g|kg|ml|l|литр|грамм)", 
+    re.IGNORECASE
+)
+STORE_PATTERNS = [
+    re.compile(r"(магнит|пятерочка|перекресток|ашан|metro|lenta|globus|верный|fix\s*price)", re.IGNORECASE),
+    re.compile(r"(сеть\s+магазинов|торговая\s+сеть|магазин)", re.IGNORECASE),
+]
+PRODUCT_NAME_INDICATORS = [
+    re.compile(r"(наименование|товар|продукт|название)", re.IGNORECASE),
+]
+
 
 @dataclass(slots=True)
 class MLResult:
@@ -50,6 +63,10 @@ class MLResult:
     confidence: Optional[float]
     engine: str
     message: Optional[str] = None
+    product_name: Optional[str] = None
+    barcode: Optional[str] = None
+    weight: Optional[str] = None
+    store: Optional[str] = None
 
 
 @dataclass(slots=True)
@@ -99,11 +116,15 @@ class OCRProcessor:
 
     def _process_stub(self) -> MLResult:
         return MLResult(
-            raw_text="Молоко 100.00 руб.",
+            raw_text="Молоко 100.00 руб. 500г Магнит",
             price=100.00,
             confidence=0.99,
             engine="stub",
             message="ML disabled; stub response is active.",
+            product_name="Молоко",
+            barcode=None,
+            weight="500г",
+            store="Магнит",
         )
 
     def get_status(self) -> dict[str, object]:
@@ -148,7 +169,10 @@ class OCRProcessor:
                 used_engines.append(engine_name)
 
         tokens = self._dedupe_tokens(all_tokens)
+        
         candidate = self._pick_best_price(tokens, tag_crop.shape[1], tag_crop.shape[0])
+        
+        extracted_info = self._extract_all_parameters(tokens, tag_crop.shape[1], tag_crop.shape[0])
 
         if self._should_try_sale_roi_paddle(tokens, candidate):
             sale_roi = self._extract_sale_price_roi(tag_crop)
@@ -161,6 +185,9 @@ class OCRProcessor:
                         tag_crop.shape[1],
                         tag_crop.shape[0],
                     )
+                    
+                    updated_info = self._extract_all_parameters(tokens, tag_crop.shape[1], tag_crop.shape[0])
+                    extracted_info.update(updated_info)
 
         raw_text = " ".join(token.text for token in tokens).strip() or None
 
@@ -171,6 +198,7 @@ class OCRProcessor:
                 confidence=0.0,
                 engine="+".join(used_engines) if used_engines else "none",
                 message="Цена не найдена. Нужен более четкий кадр или более крупный фрагмент ценника.",
+                **extracted_info,
             )
 
         return MLResult(
@@ -179,7 +207,114 @@ class OCRProcessor:
             confidence=round(max(0.0, min(candidate.confidence, 0.999)), 3),
             engine=candidate.engine_name,
             message=None,
+            **extracted_info,
         )
+
+    def _extract_all_parameters(
+        self, 
+        tokens: list[OCRToken], 
+        tag_width: int, 
+        tag_height: int
+    ) -> dict:
+        """Extract all required parameters from OCR tokens."""
+        
+        product_name = self._extract_product_name(tokens)
+        barcode = self._extract_barcode(tokens)
+        weight = self._extract_weight(tokens)
+        store = self._extract_store(tokens)
+        
+        return {
+            "product_name": product_name,
+            "barcode": barcode,
+            "weight": weight,
+            "store": store,
+        }
+
+    def _extract_product_name(self, tokens: list[OCRToken]) -> Optional[str]:
+        """Extract product name from OCR tokens."""
+        if not tokens:
+            return None
+        
+        sorted_tokens = sorted(tokens, key=lambda t: (t.center_y, t.center_x))
+        
+        potential_names = []
+        for token in sorted_tokens[:8]:
+            text = token.text.strip()
+            
+            if not text:
+                continue
+            
+            if len(text) < 3 or len(text) > 80:
+                continue
+            
+            if re.match(r'^[\d\s.,%₽]+$|^$', text):
+                continue
+            
+            if any(pattern.search(text) for pattern in [
+                PRICE_PATTERN, BARCODE_PATTERN, WEIGHT_PATTERN, DISCOUNT_HINT_PATTERN
+            ]):
+                continue
+            
+            potential_names.append(text)
+        
+        if potential_names:
+            name = " ".join(potential_names[:2])
+            return name if len(name) >= 3 else None
+        
+        return None
+
+    def _extract_barcode(self, tokens: list[OCRToken]) -> Optional[str]:
+        """Extract barcode from OCR tokens."""
+        for token in tokens:
+            match = BARCODE_PATTERN.search(token.text)
+            if match:
+                barcode = match.group(1)
+                if 8 <= len(barcode) <= 13:
+                    return barcode
+        
+        combined_text = " ".join(t.text for t in tokens)
+        match = BARCODE_PATTERN.search(combined_text)
+        if match:
+            barcode = match.group(1)
+            if 8 <= len(barcode) <= 13:
+                return barcode
+        
+        return None
+
+    def _extract_weight(self, tokens: list[OCRToken]) -> Optional[str]:
+        """Extract weight/volume from OCR tokens."""
+        for token in tokens:
+            match = WEIGHT_PATTERN.search(token.text)
+            if match:
+                return match.group(0).strip()
+        
+        combined_text = " ".join(t.text for t in tokens)
+        match = WEIGHT_PATTERN.search(combined_text)
+        if match:
+            return match.group(0).strip()
+        
+        for token in tokens:
+            if PRODUCT_UNIT_PATTERN.search(token.text):
+                return token.text.strip()
+        
+        return None
+
+    def _extract_store(self, tokens: list[OCRToken]) -> Optional[str]:
+        """Extract store name from OCR tokens."""
+        combined_text = " ".join(t.text for t in tokens)
+        
+        for pattern in STORE_PATTERNS:
+            match = pattern.search(combined_text)
+            if match:
+                return match.group(0).strip().title()
+        
+        for token in tokens:
+            for pattern in STORE_PATTERNS:
+                match = pattern.search(token.text)
+                if match:
+                    return match.group(0).strip().title()
+        
+        return None
 
     def _should_try_sale_roi_paddle(
         self,

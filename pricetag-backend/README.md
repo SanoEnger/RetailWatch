@@ -1,6 +1,17 @@
 # PriceTag Recognition — Backend
 
-FastAPI-бэкенд для MVP-сервиса распознавания цен на ценниках.
+FastAPI-бэкенд для сервиса распознавания ценников с извлечением всех параметров.
+
+## Возможности
+
+✅ Распознавание цены
+✅ Извлечение названия товара
+✅ Поиск штрихкода
+✅ Определение веса/объема
+✅ Распознавание магазина
+✅ Экспорт данных в CSV
+✅ История распознаваний
+✅ Ручная валидация результатов
 
 ## Быстрый старт
 
@@ -13,6 +24,11 @@ docker-compose up --build
 
 API доступно на http://localhost:8000  
 Swagger UI: http://localhost:8000/docs
+
+**Важно:** При первом запуске или после обновления примените миграцию БД:
+```bash
+psql -U postgres -d pricetag -f migration_add_fields.sql
+```
 
 ---
 
@@ -48,7 +64,8 @@ app/
 │   ├── health.py        # GET /health, GET /health/db
 │   ├── recognize.py     # POST /api/v1/recognize
 │   ├── history.py       # GET /api/v1/history, GET /api/v1/history/{id}
-│   └── feedback.py      # POST /api/v1/feedback/{id}
+│   ├── feedback.py      # POST /api/v1/feedback/{id}
+│   └── export.py        # GET /api/v1/export/csv
 ├── db/
 │   ├── database.py      # Async SQLAlchemy engine + get_db dependency
 │   └── crud.py          # CRUD-операции с таблицей recognitions
@@ -56,7 +73,7 @@ app/
 │   ├── recognition.py   # SQLAlchemy ORM-модель
 │   └── schemas.py       # Pydantic-схемы (request/response)
 └── services/
-    └── ml_service.py    # OCRProcessor (заглушка + скелет для ML)
+    └── ml_service.py    # OCRProcessor (распознавание всех параметров)
 ```
 
 ---
@@ -67,23 +84,51 @@ app/
 |-------|------|----------|
 | GET | `/health` | Статус сервиса |
 | GET | `/health/db` | Проверка связи с БД |
-| POST | `/api/v1/recognize` | Распознать цену на фото |
+| POST | `/api/v1/recognize` | Распознать ценник (возвращает все параметры) |
 | GET | `/api/v1/history` | История (limit, offset, status) |
 | GET | `/api/v1/history/{id}` | Карточка с картинкой в base64 |
 | POST | `/api/v1/feedback/{id}` | Отметить ошибку / подтвердить |
+| GET | `/api/v1/export/csv` | Экспорт всех данных в CSV |
+
+### Пример ответа /recognize
+
+```json
+{
+  "request_id": "uuid",
+  "price": 129.90,
+  "product_name": "Молоко Домик в деревне",
+  "barcode": "4601234567890",
+  "weight": "900г",
+  "store": "Магнит",
+  "confidence": 0.95,
+  "raw_text": "OCR текст...",
+  "timestamp": "2026-05-12T10:30:00Z"
+}
+```
 
 ---
 
 ## Подключение ML
 
-В `app/services/ml_service.py` описан класс `OCRProcessor`.  
-Сейчас он работает в режиме заглушки (возвращает фиктивную цену 100.00).
+В `app/services/ml_service.py` реализован класс `OCRProcessor` с полным функционалом распознавания.
 
-Чтобы включить реальную модель:
+**Реализованные методы извлечения:**
+- `_extract_product_name()` - название товара
+- `_extract_barcode()` - штрихкод (8-13 цифр)
+- `_extract_weight()` - вес/объем (г, кг, мл, л)
+- `_extract_store()` - магазин (по ключевым словам)
 
-1. Раскомментировать ML-зависимости в `requirements.txt`
-2. Заполнить `_load_models()` и `_process_real()` в `ml_service.py`
-3. Установить `USE_ML=true` в `.env`
+**OCR движки:**
+- Tesseract (быстрый, хороший для текста)
+- PaddleOCR (точный, хорош для цен)
+- Hybrid (оба движка вместе)
+
+**Настройка в `.env`:**
+```bash
+USE_ML=true              # Включить ML
+OCR_ENGINE=hybrid        # tesseract | paddle | hybrid
+OCR_LANG=rus+eng         # Язык OCR
+```
 
 ---
 
@@ -97,5 +142,40 @@ app/
 | `POSTGRES_DB` | pricetag | Имя БД |
 | `DEBUG` | false | SQLAlchemy echo |
 | `MAX_IMAGE_SIZE_MB` | 10 | Лимит размера файла |
-| `USE_ML` | false | Включить реальный ML-пайплайн |
-| `YOLO_MODEL_PATH` | — | Путь к весам YOLOv8 |
+| `USE_ML` | true | Включить ML-пайплайн |
+| `OCR_ENGINE` | hybrid | OCR движок: tesseract, paddle, hybrid |
+| `OCR_LANG` | rus+eng | Язык OCR |
+| `TESSERACT_CMD` | tesseract | Путь к Tesseract |
+| `YOLO_MODEL_PATH` | — | Путь к весам YOLOv8 (опционально) |
+
+---
+
+## Миграции БД
+
+При обновлении с предыдущей версии примените миграцию:
+
+```bash
+psql -U postgres -d pricetag -f migration_add_fields.sql
+```
+
+Это добавит поля: product_name, barcode, weight, store
+
+---
+
+## Тестирование
+
+```bash
+# Установка зависимостей
+pip install -r ../test_requirements.txt
+
+# Запуск тестов
+python ../test_api.py
+```
+
+---
+
+## Документация
+
+- [QUICKSTART.md](../QUICKSTART.md) - Быстрый старт
+- [UPDATE_INSTRUCTIONS.md](../UPDATE_INSTRUCTIONS.md) - Подробные инструкции по обновлению
+- [CHANGELOG.md](../CHANGELOG.md) - История изменений

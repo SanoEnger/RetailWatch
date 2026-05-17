@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.db.database import engine, Base
-from app.api import recognize, history, feedback, health
+from app.api import recognize, history, feedback, health, export
 
 
 @asynccontextmanager
@@ -33,3 +33,4 @@ app.include_router(health.router, tags=["health"])
 app.include_router(recognize.router, prefix="/api/v1", tags=["recognize"])
 app.include_router(history.router, prefix="/api/v1", tags=["history"])
 app.include_router(feedback.router, prefix="/api/v1", tags=["feedback"])
+app.include_router(export.router, prefix="/api/v1", tags=["export"])

@@ -79,4 +79,34 @@ export async function sendFeedback(
   await parseResponse(response);
 }
 
+export async function exportCSV(): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/export/csv`);
+  
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    const message = payload?.detail ?? "Ошибка экспорта CSV";
+    throw new ApiError(message, response.status);
+  }
+  
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = 'retailwatch_export.csv';
+  if (contentDisposition) {
+    const match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+    if (match && match[1]) {
+      filename = decodeURIComponent(match[1]);
+    }
+  }
+  
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export { API_BASE_URL, ApiError };

@@ -26,6 +26,12 @@ class Recognition(Base):
     correct_price: Mapped[float | None] = mapped_column(
         Numeric(10, 2), nullable=True
     )
+    
+    product_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    barcode: Mapped[str | None] = mapped_column(Text, nullable=True)
+    weight: Mapped[str | None] = mapped_column(Text, nullable=True)
+    store: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
